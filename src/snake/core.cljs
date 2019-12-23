@@ -32,9 +32,7 @@
                       (= next :down) SNAKE-SIZE
                       (= next :up) (- SNAKE-SIZE)
                       :else 0
-                      ))})
-  )
-
+                      ))}))
 
 (def any? (complement not-any?))
 
@@ -66,8 +64,6 @@
                   (:dead? state)
                   (bad-head-position? (first (:positions state)) (queue (:size state) (:positions state))))}))
 
-
-
 (defn draw-state [state]
   (q/frame-rate (min (+ FRAME-RATE (:size state)) 40))
   (q/background 240)
@@ -80,7 +76,6 @@
     (doseq [elt (queue (:size state) (:positions state))]
       (q/rect (:x elt) (:y elt) SNAKE-SIZE SNAKE-SIZE))))
 
-
 (defn setup []
   (q/color-mode :rgb)
   {:direction (arrow->direction 0)
@@ -88,8 +83,6 @@
    :size      3
    :dead?     false
    })
-
-
 
 (defn ^:export run-sketch []
   (q/defsketch snake
