@@ -8,31 +8,25 @@
 (def KEY-CODES {39 :right 37 :left 38 :up 40 :down})
 
 (defn arrow->direction [code]
-  (let [default :right]
-    (or (get KEY-CODES code) default)))
+  (or (get KEY-CODES code) :right))
 
 (defn incompatible? [direction1 direction2]
-  (or
-    (and (= direction1 :left) (= direction2 :right))
-    (and (= direction1 :right) (= direction2 :left))
-    (and (= direction1 :down) (= direction2 :up))
-    (and (= direction1 :up) (= direction2 :down))))
+  (or (and (= direction1 :left) (= direction2 :right))
+      (and (= direction1 :right) (= direction2 :left))
+      (and (= direction1 :down) (= direction2 :up))
+      (and (= direction1 :up) (= direction2 :down))))
 
 (defn next-direction [current player]
   (if (incompatible? current player) current player))
 
 (defn compute-next-position [current next]
-  (let [{currentX :x currentY :y} current]
-    {:x (+ currentX (cond
-                      (= next :right) SNAKE-SIZE
-                      (= next :left) (- SNAKE-SIZE)
-                      :else 0
-                      ))
-     :y (+ currentY (cond
-                      (= next :down) SNAKE-SIZE
-                      (= next :up) (- SNAKE-SIZE)
-                      :else 0
-                      ))}))
+  (let [f (fn [a1 a2]
+            (cond (= next a1) SNAKE-SIZE
+                  (= next a2) (- SNAKE-SIZE)
+                  :else 0))
+        {currentX :x currentY :y} current]
+    {:x (+ currentX (f :right :left))
+     :y (+ currentY (f :down :up))}))
 
 (def any? (complement not-any?))
 
@@ -43,38 +37,28 @@
   (take (- size 1) (rest positions)))
 
 (defn update-state [state]
-  (if (:dead? state)
-    state
-    {:direction (next-direction
-                  (:direction state)
-                  (arrow->direction (q/key-code)))
-
-     :positions (let [first-pos (first (:positions state))]
-                  (cons
-                    (compute-next-position
-                      {:x (:x first-pos) :y (:y first-pos)}
-                      (:direction state))
-                    (take (+ (:size state) 10) (:positions state))))
-
-     :size      (let [size (:size state)]
-                  (if (< (rand-int 100) 10) (+ size 1) size))
-
-
-     :dead?     (or
-                  (:dead? state)
-                  (bad-head-position? (first (:positions state)) (queue (:size state) (:positions state))))}))
+  (let [{size :size direction :direction positions :positions dead? :dead?} state
+        first-pos (first positions)]
+    (if dead?
+      state
+      {:direction (next-direction direction (arrow->direction (q/key-code)))
+       :positions (cons (compute-next-position first-pos direction) (take (+ size 10) positions))
+       :size      (if (< (rand-int 100) 10) (+ size 1) size)
+       :dead?     (or dead? (bad-head-position? first-pos (queue size positions)))})))
 
 (defn draw-state [state]
-  (q/frame-rate (min (+ FRAME-RATE (:size state)) 40))
-  (q/background 240)
-  (q/with-translation
-    [(/ (q/width) 2)
-     (/ (q/height) 2)]
-    (q/fill 0 250 0 200)
-    (q/rect (:x (first (:positions state))) (:y (first (:positions state))) SNAKE-SIZE SNAKE-SIZE)
-    (q/fill 0 0 0 200)
-    (doseq [elt (queue (:size state) (:positions state))]
-      (q/rect (:x elt) (:y elt) SNAKE-SIZE SNAKE-SIZE))))
+  (let [{size :size positions :positions} state
+        first-pos (first positions)]
+    (q/frame-rate (min (+ FRAME-RATE size) 40))
+    (q/background 240)
+    (q/with-translation
+      [(/ (q/width) 2)
+       (/ (q/height) 2)]
+      (q/fill 0 250 0 200)
+      (q/rect (:x first-pos) (:y first-pos) SNAKE-SIZE SNAKE-SIZE)
+      (q/fill 0 0 0 200)
+      (doseq [elt (queue size positions)]
+        (q/rect (:x elt) (:y elt) SNAKE-SIZE SNAKE-SIZE)))))
 
 (defn setup []
   (q/color-mode :rgb)
@@ -92,6 +76,3 @@
                :update update-state
                :draw draw-state
                :middleware [m/fun-mode]))
-
-; uncomment this line to reset the sketch:
-; (run-sketch)
