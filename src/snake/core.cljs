@@ -5,6 +5,8 @@
 (def SIZE 500)
 (def SNAKE-SIZE 10)
 (def FRAME-RATE 4)
+(def MAX-SWEETS 3)
+(def FREQ-SWEETS 10)
 (def KEY-CODES {39 :right 37 :left 38 :up 40 :down})
 
 (defn arrow->direction [code]
@@ -19,35 +21,57 @@
 (defn next-direction [current player]
   (if (incompatible? current player) current player))
 
+(defn coords [x y]
+  {:x x :y y})
+
 (defn compute-next-position [current next]
-  (let [f (fn [a1 a2]
-            (cond (= next a1) SNAKE-SIZE
-                  (= next a2) (- SNAKE-SIZE)
-                  :else 0))
+  (let [fct #(cond (= next %1) SNAKE-SIZE
+                   (= next %2) (- SNAKE-SIZE)
+                   :else 0)
         {currentX :x currentY :y} current]
-    {:x (+ currentX (f :right :left))
-     :y (+ currentY (f :down :up))}))
+    (coords (+ currentX (fct :right :left)) (+ currentY (fct :down :up)))))
 
 (def any? (complement not-any?))
 
+(defn match? [p1 p2]
+  (and (= (:x p1) (:x p2)) (= (:y p1) (:y p2))))
+
+(defn any-match? [coords coll]
+  (any? #(match? coords %) coll))
+
+
 (defn bad-head-position? [head queue]
-  (any? #(and (= (:x head) (:x %)) (= (:y head) (:y %))) queue))
+  (let [size2 (/ SIZE 2)
+        {:keys [x y]} head]
+    (or (>= x size2) (>= y size2) (<= x (- size2)) (<= y (- size2)) (any-match? head queue))))
 
 (defn queue [size positions]
   (take (- size 1) (rest positions)))
 
+(defn random-coords []
+  (coords
+    (- (* SNAKE-SIZE (rand-int (/ SIZE SNAKE-SIZE))) (/ SIZE 2))
+    (- (* SNAKE-SIZE (rand-int (/ SIZE SNAKE-SIZE))) (/ SIZE 2))))
+
+(defn generate-sweets [sweets head]
+  (let [no-matches (filter #(not (match? head %)) sweets)]
+    (if (and (< (rand-int 100) FREQ-SWEETS) (< (count no-matches) MAX-SWEETS))
+      (cons (random-coords) no-matches)
+      no-matches)))
+
 (defn update-state [state]
-  (let [{size :size direction :direction positions :positions dead? :dead?} state
+  (let [{:keys [sweets size direction positions dead?]} state
         first-pos (first positions)]
     (if dead?
       state
       {:direction (next-direction direction (arrow->direction (q/key-code)))
-       :positions (cons (compute-next-position first-pos direction) (take (+ size 10) positions))
-       :size      (if (< (rand-int 100) 10) (+ size 1) size)
+       :positions (cons (compute-next-position first-pos direction) (take (+ size MAX-SWEETS) positions))
+       :size      (if (any-match? first-pos sweets) (+ size 1) size)
+       :sweets    (generate-sweets sweets first-pos)
        :dead?     (or dead? (bad-head-position? first-pos (queue size positions)))})))
 
 (defn draw-state [state]
-  (let [{size :size positions :positions} state
+  (let [{:keys [size positions sweets]} state
         first-pos (first positions)]
     (q/frame-rate (min (+ FRAME-RATE size) 40))
     (q/background 240)
@@ -58,13 +82,17 @@
       (q/rect (:x first-pos) (:y first-pos) SNAKE-SIZE SNAKE-SIZE)
       (q/fill 0 0 0 200)
       (doseq [elt (queue size positions)]
+        (q/rect (:x elt) (:y elt) SNAKE-SIZE SNAKE-SIZE))
+      (q/fill 255 0 0 200)
+      (doseq [elt sweets]
         (q/rect (:x elt) (:y elt) SNAKE-SIZE SNAKE-SIZE)))))
 
 (defn setup []
   (q/color-mode :rgb)
   {:direction (arrow->direction 0)
-   :positions (list {:x 0 :y 0})
+   :positions (list (coords 0 0))
    :size      3
+   :sweets    (list)
    :dead?     false
    })
 
