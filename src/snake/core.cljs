@@ -5,47 +5,44 @@
 (def SIZE 500)
 (def SNAKE-SIZE 10)
 (def FRAME-RATE 4)
-
+(def KEY-CODES {39 :right 37 :left 38 :up 40 :down})
 
 (defn arrow->direction [code]
-  (let [default "right"]
-    (cond
-      (= code 37) "left"
-      (= code 38) "up"
-      (= code 39) "right"
-      (= code 40) "down"
-      :else default)))
+  (let [default :right]
+    (or (get KEY-CODES code) default)))
 
 (defn incompatible? [direction1 direction2]
   (or
-    (and (= direction1 "left") (= direction2 "right"))
-    (and (= direction1 "right") (= direction2 "left"))
-    (and (= direction1 "down") (= direction2 "up"))
-    (and (= direction1 "up") (= direction2 "down"))))
+    (and (= direction1 :left) (= direction2 :right))
+    (and (= direction1 :right) (= direction2 :left))
+    (and (= direction1 :down) (= direction2 :up))
+    (and (= direction1 :up) (= direction2 :down))))
 
-(defn next-direction [current-direction player-direction]
-  (if (incompatible? current-direction player-direction)
-    current-direction
-    player-direction))
+(defn next-direction [current player]
+  (if (incompatible? current player) current player))
 
-(defn compute-next-position [current-position next-direction]
-  {:x (+ (:x current-position)
-         (cond
-           (= next-direction "right") SNAKE-SIZE
-           (= next-direction "left") (- SNAKE-SIZE)
-           :else 0
-           ))
-   :y (+ (:y current-position)
-         (cond
-           (= next-direction "down") SNAKE-SIZE
-           (= next-direction "up") (- SNAKE-SIZE)
-           :else 0
-           ))}
+(defn compute-next-position [current next]
+  (let [{currentX :x currentY :y} current]
+    {:x (+ currentX (cond
+                      (= next :right) SNAKE-SIZE
+                      (= next :left) (- SNAKE-SIZE)
+                      :else 0
+                      ))
+     :y (+ currentY (cond
+                      (= next :down) SNAKE-SIZE
+                      (= next :up) (- SNAKE-SIZE)
+                      :else 0
+                      ))})
   )
 
+
+(def any? (complement not-any?))
+
 (defn bad-head-position? [head queue]
-  (not (not-any? (fn [x]
-                   (and (= (:x head) (:x x)) (= (:y head) (:y x)))) queue)))
+  (any? #(and (= (:x head) (:x %)) (= (:y head) (:y %))) queue))
+
+(defn queue [size positions]
+  (take (- size 1) (rest positions)))
 
 (defn update-state [state]
   (if (:dead? state)
@@ -53,14 +50,23 @@
     {:direction (next-direction
                   (:direction state)
                   (arrow->direction (q/key-code)))
-     :positions (cons
-                  (compute-next-position
-                    {:x (:x (first (:positions state))) :y (:y (first (:positions state)))}
-                    (:direction state))
-                  (take (+ (:size state) 10) (:positions state)))
-     :size      (if (< (rand-int 100) 10) (+ (:size state) 1) (:size state))
-     :dead?     (or (:dead? state) (bad-head-position? (first (:positions state)) (rest (:positions state))))
-     }))
+
+     :positions (let [first-pos (first (:positions state))]
+                  (cons
+                    (compute-next-position
+                      {:x (:x first-pos) :y (:y first-pos)}
+                      (:direction state))
+                    (take (+ (:size state) 10) (:positions state))))
+
+     :size      (let [size (:size state)]
+                  (if (< (rand-int 100) 10) (+ size 1) size))
+
+
+     :dead?     (or
+                  (:dead? state)
+                  (bad-head-position? (first (:positions state)) (queue (:size state) (:positions state))))}))
+
+
 
 (defn draw-state [state]
   (q/frame-rate (min (+ FRAME-RATE (:size state)) 40))
@@ -71,13 +77,11 @@
     (q/fill 0 250 0 200)
     (q/rect (:x (first (:positions state))) (:y (first (:positions state))) SNAKE-SIZE SNAKE-SIZE)
     (q/fill 0 0 0 200)
-    (doseq [elt (take (- (:size state) 1) (rest (:positions state)))]
-      (q/rect (:x elt) (:y elt) SNAKE-SIZE SNAKE-SIZE)
-      )))
+    (doseq [elt (queue (:size state) (:positions state))]
+      (q/rect (:x elt) (:y elt) SNAKE-SIZE SNAKE-SIZE))))
 
 
 (defn setup []
-  (q/frame-rate FRAME-RATE)
   (q/color-mode :rgb)
   {:direction (arrow->direction 0)
    :positions (list {:x 0 :y 0})

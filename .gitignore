@@ -8,3 +8,6 @@ pom.xml.asc
 /.lein-*
 /.nrepl-port
 figwheel_server.log
+.idea
+resources/public/js
+snake.iml
