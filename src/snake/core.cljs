@@ -1,6 +1,7 @@
 (ns snake.core
   (:require [quil.core :as q :include-macros true]
-            [quil.middleware :as m]))
+            [quil.middleware :as m]
+            [cljs.spec.alpha :as s]))
 
 (def SIZE 500)
 (def SNAKE-SIZE 10)
@@ -12,11 +13,19 @@
 (defn arrow->direction [code]
   (or (get KEY-CODES code) :right))
 
+(s/fdef arrow->direction
+        :args (s/cat :code number?)
+        :ret symbol?)
+
 (defn incompatible? [direction1 direction2]
   (or (and (= direction1 :left) (= direction2 :right))
       (and (= direction1 :right) (= direction2 :left))
       (and (= direction1 :down) (= direction2 :up))
       (and (= direction1 :up) (= direction2 :down))))
+
+(s/fdef incompatible?
+        :args (s/cat :direction1 symbol? :direction2 symbol?)
+        :ret boolean?)
 
 (defn next-direction [current player]
   (if (incompatible? current player) current player))

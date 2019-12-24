@@ -1,0 +1,7 @@
+version: '3'
+services:
+  baby-snake:
+    container_name: baby-snake
+    image: earendil06/baby-snake
+    ports:
+      - 9100:80
