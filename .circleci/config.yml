@@ -26,7 +26,7 @@ jobs:
       - run:
           name: Deploy over SSH
           command: |
-            ssh ubuntu@vps.florentpastor.com mkdir ~/baby-snake
-            scp docker-compose.yml ubuntu@vps.florentpastor.com:~/baby-snake
-            ssh ubuntu@vps.florentpastor.com docker-compose -f ./baby-snake/docker-compose.yml pull
-            ssh ubuntu@vps.florentpastor.com docker-compose -f ./baby-snake/docker-compose.yml up -d --force-recreate
+            ssh ubuntu@vps.florentpastor.com mkdir /home/ubuntu/baby-snake
+            scp docker-compose.yml ubuntu@vps.florentpastor.com:/home/ubuntu/baby-snake
+            ssh ubuntu@vps.florentpastor.com docker-compose -f /home/ubuntu/baby-snake/docker-compose.yml pull
+            ssh ubuntu@vps.florentpastor.com docker-compose -f /home/ubuntu/baby-snake/docker-compose.yml up -d --force-recreate
