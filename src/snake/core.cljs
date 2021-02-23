@@ -13,19 +13,15 @@
 (defn arrow->direction [code]
   (or (get KEY-CODES code) :right))
 
-(s/fdef arrow->direction
-        :args (s/cat :code number?)
-        :ret symbol?)
+(defn direction->arrow [symbol]
+  (let [reversed (clojure.set/map-invert KEY-CODES)]
+    (or (get reversed symbol) 39)))
 
 (defn incompatible? [direction1 direction2]
-  (or (and (= direction1 :left) (= direction2 :right))
-      (and (= direction1 :right) (= direction2 :left))
-      (and (= direction1 :down) (= direction2 :up))
-      (and (= direction1 :up) (= direction2 :down))))
-
-(s/fdef incompatible?
-        :args (s/cat :direction1 symbol? :direction2 symbol?)
-        :ret boolean?)
+  (let [prod (* (direction->arrow direction1) (direction->arrow direction2))
+        forbidden1 (* (direction->arrow :right) (direction->arrow :left))
+        forbidden2 (* (direction->arrow :up) (direction->arrow :down))]
+    (or (= prod forbidden1) (= prod forbidden2))))
 
 (defn next-direction [current player]
   (if (incompatible? current player) current player))
@@ -68,27 +64,36 @@
       (cons (random-coords) no-matches)
       no-matches)))
 
+(defn create-state [direction positions size sweets]
+  {:direction direction
+   :positions positions
+   :size      size
+   :sweets    sweets})
+
+
 (defn update-state [state]
-  (let [{:keys [sweets size direction positions dead?]} state
+  (let [{:keys [sweets size direction positions]} state
         first-pos (first positions)]
-    (if dead?
+    (if (bad-head-position? first-pos (queue size positions))
       state
-      {:direction (next-direction direction (arrow->direction (q/key-code)))
-       :positions (cons (compute-next-position first-pos direction) (take (+ size MAX-SWEETS) positions))
-       :size      (if (any-match? first-pos sweets) (+ size 1) size)
-       :sweets    (generate-sweets sweets first-pos)
-       :dead?     (or dead? (bad-head-position? first-pos (queue size positions)))})))
+      (create-state
+        (next-direction direction (arrow->direction (q/key-code)))
+        (cons (compute-next-position first-pos direction) (take size positions))
+        (if (any-match? first-pos sweets) (+ size 1) size)
+        (generate-sweets sweets first-pos)))))
+
 
 (defn draw-state [state]
   (let [{:keys [size positions sweets]} state
-        first-pos (first positions)]
+        first-pos (first positions)
+        {:keys [x y]} first-pos]
     (q/frame-rate (min (+ FRAME-RATE size) 40))
     (q/background 240)
     (q/with-translation
       [(/ (q/width) 2)
        (/ (q/height) 2)]
       (q/fill 0 250 0 200)
-      (q/rect (:x first-pos) (:y first-pos) SNAKE-SIZE SNAKE-SIZE)
+      (q/rect x y SNAKE-SIZE SNAKE-SIZE)
       (q/fill 0 0 0 200)
       (doseq [elt (queue size positions)]
         (q/rect (:x elt) (:y elt) SNAKE-SIZE SNAKE-SIZE))
@@ -96,14 +101,11 @@
       (doseq [elt sweets]
         (q/rect (:x elt) (:y elt) SNAKE-SIZE SNAKE-SIZE)))))
 
+
+
 (defn setup []
   (q/color-mode :rgb)
-  {:direction (arrow->direction 0)
-   :positions (list (coords 0 0))
-   :size      3
-   :sweets    (list)
-   :dead?     false
-   })
+  (create-state (arrow->direction 0) (list (coords 0 0)) 3 (list)))
 
 (defn ^:export run-sketch []
   (q/defsketch snake

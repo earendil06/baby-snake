@@ -3,11 +3,11 @@
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.10.1"]
+  :dependencies [[lein-doo "0.1.10"][org.clojure/clojure "1.10.1"]
                  [quil "3.1.0"]
                  [org.clojure/clojurescript "1.10.520"]]
 
-  :plugins [[lein-cljsbuild "1.1.7"]
+  :plugins [[lein-cljsbuild "1.1.7"][lein-doo "0.1.10"]
             [lein-figwheel "0.5.19"]]
   :hooks [leiningen.cljsbuild]
 
@@ -30,4 +30,10 @@
               :output-to "resources/public/js/main.js"
               :output-dir "resources/public/js/optimized"
               :asset-path "js/optimized"
-              :optimizations :advanced}}]})
+              :optimizations :advanced}}
+            {:id "test"
+             :source-paths ["src" "test"]
+             :compiler {:output-to "resources/public/js/testable.js"
+                        :main snake.runner
+                        :optimizations :none}}
+            ]})
